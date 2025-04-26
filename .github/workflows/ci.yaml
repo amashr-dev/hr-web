@@ -1,0 +1,47 @@
+name: CI/CD for HR-Web
+
+on:
+  push:
+    branches: [main]  # Trigger the CI pipeline on push to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Repository
+      - name: 🛎️ Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Install Dependencies
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      # 3. Run Tests
+      - name: 🧪 Run Tests
+        run: npm run test
+
+      # 4. Lint Code
+      - name: 🧹 Lint Code
+        run: npm run lint
+
+      # 5. Build App
+      - name: 🛠️ Build App
+        run: npm run build
+
+      # 6. Build Docker Image
+      - name: 🐳 Build Docker Image
+        run: |
+          docker build -t ghcr.io/amashr-dev/hr-web:${{ github.sha }} .
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push ghcr.io/amashr-dev/hr-web:${{ github.sha }}
+
+      # 7. Update image tag in hr-k8s-pipeline
+      - name: 📘 Update image tag in hr-k8s-pipeline
+        uses: amashr-dev/update-k8s-tag-action@v1
+        with:
+          image_tag: ${{ github.sha }}
+          service_name: hr-web
+          service_path: k8s/charts/frontend/hr-web/values.yaml
+          k8s_repo: github.com/amashr-dev/hr-k8s-pipeline  # Updated repo link
+          github_token: ${{ secrets.K8S_REPO_PAT }}  # Use your GitHub Token for repo access

@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]  # Trigger the CI pipeline on push to main branch
 
+permissions:
+  contents: write  # Needed to push changes to your repository
+  packages: write  # Needed for pushing Docker images to GHCR
+  pull-requests: write  # Needed for creating pull requests
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest

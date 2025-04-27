@@ -2,7 +2,7 @@ name: CI/CD for HR-Web
 
 on:
   push:
-    branches: [main]  # Trigger the CI pipeline on push to main branch
+    branches: [main]  # Trigger the CI pipeline on push to the main branch
 
 permissions:
   contents: write  # Needed to push changes to your repository

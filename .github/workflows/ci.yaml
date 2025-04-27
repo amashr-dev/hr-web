@@ -7,7 +7,6 @@ on:
 permissions:
   contents: write  # Needed to push changes to your repository
   packages: write  # Needed for pushing Docker images to GHCR
-  pull-requests: write  # Needed for creating pull requests
 
 jobs:
   build-and-deploy:
@@ -46,7 +45,6 @@ jobs:
           git add k8s/charts/frontend/hr-web/values.yaml
           git commit -m "chore: bump hr-web image tag to ${{ github.sha }}"
           git push origin "$branch"
-
 
       # 6. Create Pull Request
       - name: 📤 Create Pull Request

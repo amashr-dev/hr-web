@@ -38,12 +38,15 @@ jobs:
         run: |
           git clone https://x-access-token:${{ secrets.K8S_REPO_PAT }}@github.com/amashr-dev/hr-k8s-pipeline.git
           cd hr-k8s-pipeline
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           branch="update-${{ github.sha }}"
           git checkout -b "$branch"
           yq e -i ".image.tag = \"${{ github.sha }}\"" k8s/charts/frontend/hr-web/values.yaml
           git add k8s/charts/frontend/hr-web/values.yaml
           git commit -m "chore: bump hr-web image tag to ${{ github.sha }}"
           git push origin "$branch"
+
 
       # 6. Create Pull Request
       - name: 📤 Create Pull Request

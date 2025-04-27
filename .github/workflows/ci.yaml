@@ -36,13 +36,25 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker push ghcr.io/amashr-dev/hr-web:${{ github.sha }}
 
-      # 7. Update image tag in hr-k8s-pipeline
+      # 7. Update image tag in hr-k8s-pipeline (Inline Script)
       - name: 📘 Update image tag in hr-k8s-pipeline
-        uses: amashr-dev/update-k8s-tag-action@v1
+        run: |
+          git clone https://x-access-token:${{ secrets.K8S_REPO_PAT }}@github.com/amashr-dev/hr-k8s-pipeline.git
+          cd hr-k8s-pipeline
+          branch="update-${{ github.sha }}"
+          git checkout -b "$branch"
+          yq e -i ".image.tag = \"${{ github.sha }}\"" k8s/charts/frontend/hr-web/values.yaml
+          git add k8s/charts/frontend/hr-web/values.yaml
+          git commit -m "chore: bump hr-web image tag to ${{ github.sha }}"
+          git push origin "$branch"
 
+      # 8. Create Pull Request
+      - name: 📤 Create Pull Request
+        uses: peter-evans/create-pull-request@v5
         with:
-          image_tag: ${{ github.sha }}
-          service_name: hr-web
-          service_path: k8s/charts/frontend/hr-web/values.yaml
-          k8s_repo: github.com/amashr-dev/hr-k8s-pipeline  # Updated repo link
-          github_token: ${{ secrets.K8S_REPO_PAT }}  # Use your GitHub Token for repo access
+          token: ${{ secrets.K8S_REPO_PAT }}
+          commit-message: "chore: bump hr-web image tag"
+          title: "Update hr-web image tag"
+          body: "Auto-generated PR to update image tag for hr-web"
+          branch: update-${{ github.sha }}
+          path: hr-k8s-pipeline

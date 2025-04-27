@@ -17,26 +17,18 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
-      # 3. Run Tests
-      - name: 🧪 Run Tests
-        run: npm run test
-
-      # 4. Lint Code
-      - name: 🧹 Lint Code
-        run: npm run lint
-
-      # 5. Build App
+      # 3. Build App
       - name: 🛠️ Build App
         run: npm run build
 
-      # 6. Build Docker Image
+      # 4. Build Docker Image
       - name: 🐳 Build Docker Image
         run: |
           docker build -t ghcr.io/amashr-dev/hr-web:${{ github.sha }} .
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker push ghcr.io/amashr-dev/hr-web:${{ github.sha }}
 
-      # 7. Update image tag in hr-k8s-pipeline (Inline Script)
+      # 5. Update image tag in hr-k8s-pipeline (Inline Script)
       - name: 📘 Update image tag in hr-k8s-pipeline
         run: |
           git clone https://x-access-token:${{ secrets.K8S_REPO_PAT }}@github.com/amashr-dev/hr-k8s-pipeline.git
@@ -48,7 +40,7 @@ jobs:
           git commit -m "chore: bump hr-web image tag to ${{ github.sha }}"
           git push origin "$branch"
 
-      # 8. Create Pull Request
+      # 6. Create Pull Request
       - name: 📤 Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:

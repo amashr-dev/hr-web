@@ -38,7 +38,7 @@ jobs:
 
       # 7. Update image tag in hr-k8s-pipeline
       - name: 📘 Update image tag in hr-k8s-pipeline
-        uses: github.com/amashr-dev/update-k8s-tag-action@v1
+        uses: github.com/amashr-dev/update-k8s-tag-action
 
         with:
           image_tag: ${{ github.sha }}

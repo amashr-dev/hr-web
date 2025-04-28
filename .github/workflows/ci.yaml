@@ -2,59 +2,75 @@ name: CI/CD for HR-Web
 
 on:
   push:
-    branches: [main]  # Only on main branch pushes
+    branches: [main]
 
 permissions:
-  contents: write  # Needed to commit and create PR
-  pull-requests: write  # Needed to create PR
+  contents: write
+  packages: write
+  pull-requests: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout current repo
+      # 1. Checkout Repository
       - name: 🛎️ Checkout Repository
         uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Install Dependencies
+      # 2. Cache Node Modules
+      - name: 💾 Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # 3. Install Dependencies
       - name: 📦 Install Dependencies
         run: npm install
 
-      # 3. Build App
+      # 4. Build App
       - name: 🛠️ Build App
         run: npm run build
 
-      # 4. Build and Push Docker Image
+      # 5. Build and Push Docker Image
       - name: 🐳 Build and Push Docker Image
         run: |
           docker build -t ghcr.io/amashr-dev/hr-web:${{ github.sha }} .
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.K8S_REPO_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker push ghcr.io/amashr-dev/hr-web:${{ github.sha }}
 
-      # 5. Checkout hr-k8s-pipeline repository
-      - name: 🛎️ Checkout hr-k8s-pipeline repo
-        uses: actions/checkout@v3
-        with:
-          repository: amashr-dev/hr-k8s-pipeline
-          token: ${{ secrets.K8S_REPO_PAT }}
-          path: hr-k8s-pipeline
-
-      # 6. Update YAML file
-      - name: 🛠️ Update Image Tag
+      # 6. Clone k8s-pipeline repo and Update Image Tag
+      - name: 📘 Update image tag in hr-k8s-pipeline
         run: |
+          git clone https://x-access-token:${{ secrets.K8S_REPO_PAT }}@github.com/amashr-dev/hr-k8s-pipeline.git
           cd hr-k8s-pipeline
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          branch="update-${{ github.sha }}"
+          git checkout -b "$branch"
           yq e -i ".image.tag = \"${{ github.sha }}\"" k8s/charts/frontend/hr-web/values.yaml
+          
+          if git diff --quiet; then
+            echo "No changes detected, skipping commit and PR."
+            echo "skip=true" >> $GITHUB_ENV
+          else
+            git add k8s/charts/frontend/hr-web/values.yaml
+            git commit -m "chore: bump hr-web image tag to ${{ github.sha }}"
+            git push origin "$branch"
+          fi
 
-      # 7. Create Pull Request
+      # 7. Create Pull Request only if there were changes
       - name: 📤 Create Pull Request
+        if: env.skip != 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.K8S_REPO_PAT }}
-          path: hr-k8s-pipeline
-          commit-message: "chore: bump hr-web image tag to ${{ github.sha }}"
+          commit-message: "chore: bump hr-web image tag"
           title: "Update hr-web image tag"
-          body: "Auto-generated PR to update image tag for hr-web to `${{ github.sha }}`"
+          body: "Auto-generated PR to update image tag for hr-web"
           branch: update-${{ github.sha }}
+          path: hr-k8s-pipeline
